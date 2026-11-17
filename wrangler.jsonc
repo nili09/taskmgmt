@@ -21,7 +21,11 @@
     // Empty means every request is refused. ALLOWED_EMAILS is a Worker secret,
     // never in this file.
     "ACCESS_TEAM_DOMAIN": "https://noisy-poetry-5afe.cloudflareaccess.com",
-    "ACCESS_AUD": "a5f254817aa4cf2238e3a86f1f2ed66fa743a901e5604d5f62c96f2717daeb9f"
+    "ACCESS_AUD": "a5f254817aa4cf2238e3a86f1f2ed66fa743a901e5604d5f62c96f2717daeb9f",
+    // Web Push. The public key is not a secret; VAPID_PRIVATE_JWK is a Worker secret.
+    // Empty means no notification is ever sent and the app does not offer them.
+    "VAPID_PUBLIC_KEY": "",
+    "VAPID_SUBJECT": ""
   },
   // Attachment bytes. Metadata lives in D1; this holds the files themselves.
   "kv_namespaces": [

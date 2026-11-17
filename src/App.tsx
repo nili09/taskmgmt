@@ -3,6 +3,7 @@ import { VIEWS, type Me, type View } from "./api";
 import { formatDue, today } from "./dates";
 import History from "./History";
 import { activityFor, searchTasks, tasksFor, titleOf, type TaskRow } from "./select";
+import { disablePush, enablePush, pushState, type PushState } from "./push";
 import { apply, getSnapshot, init, newTaskId, subscribe, type Snapshot } from "./store";
 import TaskDetail from "./TaskDetail";
 
@@ -29,6 +30,13 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [composing, setComposing] = useState(false);
   const [menu, setMenu] = useState(false);
+
+  const unread = tasksFor(s, "open").filter((t) => t.unread).length;
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    if (!nav.setAppBadge) return;
+    void (unread ? nav.setAppBadge(unread) : nav.clearAppBadge?.()).catch(() => {});
+  }, [unread]);
 
   useEffect(() => {
     init().finally(() => setReady(true));
@@ -153,6 +161,7 @@ function Menu({ s, onClose, go }: { s: Snapshot; onClose: () => void; go: (hash:
         <button className="menu-item" onClick={() => go("/search")}>
           Search
         </button>
+        <PushControl pushKey={s.me?.push_key ?? null} />
         <a className="menu-item" href="/api/export.json">
           Export everything as JSON
         </a>
@@ -172,6 +181,39 @@ function Menu({ s, onClose, go }: { s: Snapshot; onClose: () => void; go: (hash:
         </div>
       </div>
     </div>
+  );
+}
+
+/** Permission is asked for only on a deliberate tap, never on first load. */
+function PushControl({ pushKey }: { pushKey: string | null }) {
+  const [state, setState] = useState<PushState | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void pushState(pushKey).then(setState);
+  }, [pushKey]);
+
+  if (!state) return null;
+  if (state === "needs-install")
+    return <p className="menu-note">Add Tandem to your home screen to get notifications on this phone.</p>;
+  if (state === "unsupported") return <p className="menu-note">This browser cannot show notifications.</p>;
+  if (state === "blocked") return <p className="menu-note">Notifications are blocked in this browser's settings.</p>;
+
+  return (
+    <button
+      className="menu-item"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          setState(state === "on" ? await disablePush() : await enablePush(pushKey!));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {state === "on" ? "Turn off notifications" : "Turn on notifications"}
+    </button>
   );
 }
 

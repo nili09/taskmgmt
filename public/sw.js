@@ -48,3 +48,65 @@ self.addEventListener("fetch", (e) => {
     }),
   );
 });
+
+/*
+ * A push carries nothing. The words come from asking the API what changed, so no detail about
+ * a task is handed to a push service.
+ */
+function describe(e) {
+  const who = e.actor_name || "They";
+  switch (e.type) {
+    case "task.created":
+      return `${who} added this task`;
+    case "task.completed":
+      return `${who} completed it`;
+    case "task.reopened":
+      return `${who} reopened it`;
+    case "task.reassigned":
+      return `${who} changed who owns it`;
+    case "note.added":
+      return `${who} added a note`;
+    default:
+      return `${who} made a change`;
+  }
+}
+
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    (async () => {
+      let title = "Tandem";
+      let body = "Something changed";
+      let data = {};
+      try {
+        const res = await fetch("/api/activity?limit=1", { credentials: "same-origin" });
+        if (res.ok && !res.redirected) {
+          const latest = (await res.json()).events[0];
+          if (latest) {
+            title = latest.task_title || "Tandem";
+            body = describe(latest);
+            data = { task_id: latest.task_id };
+          }
+        }
+      } catch {
+        /* show the plain words instead */
+      }
+      await self.registration.showNotification(title, { body, data, tag: "tandem", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png" });
+    })(),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const path = event.notification.data?.task_id ? `/#/t/${event.notification.data.task_id}` : "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          client.navigate(path);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(path);
+    }),
+  );
+});

@@ -482,3 +482,10 @@
   display: inline-flex;
   align-items: center;
 }
+
+.menu-note {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+}

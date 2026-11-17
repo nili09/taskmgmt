@@ -1,4 +1,4 @@
-export type Me = { email: string; name: string | null; other: { email: string; name: string | null } | null };
+export type Me = { email: string; name: string | null; other: { email: string; name: string | null } | null; push_key: string | null };
 export const VIEWS = ["open", "mine", "theirs", "done", "archived"] as const;
 export type View = (typeof VIEWS)[number];
 

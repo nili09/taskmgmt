@@ -60,8 +60,8 @@ export async function request(
 
 /** A signed-in person. */
 export function as(email: string) {
-  const call = async (path: string, init: { method?: string; body?: unknown } = {}) =>
-    request(path, { ...init, headers: { "cf-access-jwt-assertion": await accessToken(email) } });
+  const call = async (path: string, init: { method?: string; body?: unknown } = {}, overrides: Partial<typeof env> = {}) =>
+    request(path, { ...init, headers: { "cf-access-jwt-assertion": await accessToken(email) } }, overrides);
   return {
     email,
     get: async (path: string) => {
@@ -72,10 +72,12 @@ export function as(email: string) {
       const res = await call(path, { body });
       return { status: res.status, body: (await res.json()) as any };
     },
-    mutate: async (type: string, payload: Record<string, unknown>, extra: { id?: string; client_at?: string } = {}) => {
-      const res = await call("/api/mutations", {
-        body: { id: extra.id ?? crypto.randomUUID(), type, client_at: extra.client_at ?? new Date().toISOString(), payload },
-      });
+    mutate: async (type: string, payload: Record<string, unknown>, extra: { id?: string; client_at?: string } = {}, overrides: Partial<typeof env> = {}) => {
+      const res = await call(
+        "/api/mutations",
+        { body: { id: extra.id ?? crypto.randomUUID(), type, client_at: extra.client_at ?? new Date().toISOString(), payload } },
+        overrides,
+      );
       return { status: res.status, body: (await res.json()) as any };
     },
   };

@@ -8,6 +8,10 @@ export interface Env {
   ACCESS_TEAM_DOMAIN: string;
   /** The Access application's audience tag. */
   ACCESS_AUD: string;
+  /** Web Push. The public key is config; the private key is a Worker secret. */
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_JWK?: string;
+  VAPID_SUBJECT?: string;
   /** Local development only. Never set in a deployed Worker. */
   DEV_USER_EMAIL?: string;
 }

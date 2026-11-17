@@ -2,6 +2,22 @@
 
 All notable changes to Tandem. Versions follow the phase plan in the brief: one tag per phase.
 
+## 0.5.0 – Notifications
+
+- Web Push with VAPID tells the other person when a task is created, completed, reopened,
+  reassigned or gets a note. Never the person who made the change, and never for a checklist
+  tick, which shows as unread instead.
+- The push carries no payload. It is a nudge; the service worker asks the API what changed and
+  writes the notification from the record, so nothing about a task reaches a push service.
+  Tapping it opens that task.
+- Permission is asked for only after a deliberate tap in the menu. On an iPhone the app explains
+  that notifications need it on the home screen first, rather than offering a control that
+  cannot work.
+- Sending happens after the response has gone back, so a slow push service never slows a save,
+  and a subscription the push service reports as gone is deleted.
+- The app icon carries a badge of how many open tasks the other person has touched, where the
+  platform supports it.
+
 ## 0.4.0 – Attachments
 
 - Photos and documents attach to a task. The bytes go to Workers KV keyed by attachment id;

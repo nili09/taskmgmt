@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { authenticate } from "./auth";
 import { HttpError, type AppEnv } from "./env";
 import { applyMutation } from "./mutations";
+import { notify } from "./push";
 import { activity, cursors, eventsAfter, exportAll, listTasks, markRead, me, searchTasks, taskDetail, tasksCsv } from "./queries";
 
 const app = new Hono<AppEnv>();
@@ -30,9 +31,43 @@ async function body(req: Request): Promise<unknown> {
   }
 }
 
-app.get("/api/me", async (c) => c.json(await me(c.env, c.get("user").email)));
+app.get("/api/me", async (c) => c.json({ ...(await me(c.env, c.get("user").email)), push_key: c.env.VAPID_PUBLIC_KEY ?? null }));
 
-app.post("/api/mutations", async (c) => c.json(await applyMutation(c.env, c.get("user"), await body(c.req.raw))));
+app.post("/api/mutations", async (c) => {
+  const result = await applyMutation(c.env, c.get("user"), await body(c.req.raw));
+  // After the answer goes back, so a slow push service never slows a save. There is no
+  // execution context when the Worker is called directly, as the tests do.
+  if (!result.replayed) {
+    const sending = notify(c.env, result.event).catch(() => {});
+    try {
+      c.executionCtx.waitUntil(sending);
+    } catch {
+      /* called without a context: it still sends, just not held open */
+    }
+  }
+  return c.json(result);
+});
+
+app.post("/api/push/subscribe", async (c) => {
+  const b = (await body(c.req.raw)) as { endpoint?: unknown; p256dh?: unknown; auth?: unknown };
+  if (typeof b.endpoint !== "string" || typeof b.p256dh !== "string" || typeof b.auth !== "string") {
+    throw new HttpError(400, "Invalid subscription");
+  }
+  await c.env.DB.prepare(
+    `INSERT INTO push_subscriptions (endpoint, email, p256dh, auth, created_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (endpoint) DO UPDATE SET email = excluded.email, p256dh = excluded.p256dh, auth = excluded.auth`,
+  )
+    .bind(b.endpoint, c.get("user").email, b.p256dh, b.auth, new Date().toISOString())
+    .run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/push/unsubscribe", async (c) => {
+  const b = (await body(c.req.raw)) as { endpoint?: unknown };
+  if (typeof b.endpoint !== "string") throw new HttpError(400, "Invalid subscription");
+  await c.env.DB.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").bind(b.endpoint).run();
+  return c.json({ ok: true });
+});
 
 app.get("/api/events", async (c) =>
   c.json(await eventsAfter(c.env.DB, int(c.req.query("after"), 0, 0, Number.MAX_SAFE_INTEGER), int(c.req.query("limit"), 500, 1, 1000))),
