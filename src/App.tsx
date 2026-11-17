@@ -1,54 +1,71 @@
 import { useCallback, useEffect, useState } from "react";
-import { getMe, getTasks, mutate, newId, VIEWS, type Me, type TaskRow, type View } from "./api";
+import { getActivity, getMe, getTasks, mutate, newId, search, VIEWS, type ActivityEvent, type Me, type TaskRow, type View } from "./api";
+import { formatDue, today } from "./dates";
+import History from "./History";
+import TaskDetail from "./TaskDetail";
 
-const LABELS: Record<View, string> = {
-  open: "Open",
-  mine: "Mine",
-  theirs: "Theirs",
-  done: "Done",
-  archived: "Archived",
-};
+const LABELS: Record<View, string> = { open: "Open", mine: "Mine", theirs: "Theirs", done: "Done", archived: "Archived" };
 
-const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in the viewer's zone
+type Route = { name: "list" } | { name: "task"; id: string } | { name: "activity" } | { name: "search" };
 
-function formatDue(due: string): string {
-  const [y, m, d] = due.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  const sameYear = y === new Date().getFullYear();
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
+function readHash(): Route {
+  const hash = location.hash.replace(/^#\/?/, "");
+  if (hash.startsWith("t/")) return { name: "task", id: hash.slice(2) };
+  if (hash === "activity") return { name: "activity" };
+  if (hash === "search") return { name: "search" };
+  return { name: "list" };
 }
 
 export default function App() {
   const [me, setMe] = useState<Me | null>(null);
+  const [route, setRoute] = useState<Route>(readHash);
   const [view, setView] = useState<View>("open");
   const [tasks, setTasks] = useState<TaskRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
+  const [menu, setMenu] = useState(false);
 
   useEffect(() => {
     getMe().then(setMe, (e: Error) => setError(e.message));
+    const onHash = () => setRoute(readHash());
+    addEventListener("hashchange", onHash);
+    return () => removeEventListener("hashchange", onHash);
   }, []);
 
   const load = useCallback(() => {
-    setTasks(null);
     getTasks(view).then(setTasks, (e: Error) => setError(e.message));
   }, [view]);
 
   useEffect(() => {
-    if (me?.name) load();
-  }, [me?.name, load]);
+    if (me?.name && route.name === "list") load();
+  }, [me?.name, route.name, load]);
 
   if (error && !me) return <p className="shell error">{error}</p>;
   if (!me) return null;
   if (!me.name) return <NameGate email={me.email} onNamed={(name) => setMe({ ...me, name })} />;
 
-  const nameFor = (email: string) => (email === me.email ? "Me" : (me.other?.name ?? email));
+  const nameFor = (email: string) => (email === me.email ? (me.name ?? "Me") : (me.other?.name ?? email));
+  const go = (hash: string) => {
+    location.hash = hash;
+    setMenu(false);
+  };
+
+  if (route.name === "task") {
+    return <TaskDetail id={route.id} me={me} onBack={() => go("/")} onChanged={load} />;
+  }
+  if (route.name === "activity") return <Activity nameFor={nameFor} onBack={() => go("/")} />;
+  if (route.name === "search") return <Search nameFor={nameFor} onBack={() => go("/")} />;
 
   return (
     <>
       <div className="shell">
         <header className="masthead">
-          <h1 className="wordmark">Tandem</h1>
+          <div className="masthead-row">
+            <h1 className="wordmark">Tandem</h1>
+            <button className="quiet" onClick={() => setMenu(true)}>
+              Menu
+            </button>
+          </div>
           <nav className="views">
             {VIEWS.map((v) => (
               <button key={v} className="view" aria-current={v === view} onClick={() => setView(v)}>
@@ -62,21 +79,7 @@ export default function App() {
         {tasks === null ? null : tasks.length === 0 ? (
           <p className="notice">{view === "open" ? "Nothing open. Add the first task." : "Nothing here."}</p>
         ) : (
-          tasks.map((t) => (
-            <article key={t.id} className={t.completed_at ? "row row-done" : "row"}>
-              {t.unread ? <span className="mark" aria-label="Unread" /> : null}
-              <h2 className="row-title">{t.title}</h2>
-              <p className="row-meta tnum">
-                <span>{nameFor(t.owner_email)}</span>
-                {t.due_date && (
-                  <span className={!t.completed_at && !t.archived_at && t.due_date < today() ? "overdue" : undefined}>
-                    {formatDue(t.due_date)}
-                  </span>
-                )}
-                {t.priority === "high" && !t.completed_at && <span>High</span>}
-              </p>
-            </article>
-          ))
+          <TaskRows tasks={tasks} nameFor={nameFor} />
         )}
       </div>
 
@@ -92,7 +95,105 @@ export default function App() {
           }}
         />
       )}
+      {menu && <Menu me={me} onClose={() => setMenu(false)} go={go} />}
     </>
+  );
+}
+
+function TaskRows({ tasks, nameFor }: { tasks: TaskRow[]; nameFor: (email: string) => string }) {
+  return (
+    <>
+      {tasks.map((t) => (
+        <a className={t.completed_at ? "row row-done" : "row"} key={t.id} href={`#/t/${t.id}`}>
+          {t.unread ? <span className="mark" aria-label="Unread" /> : null}
+          <h2 className="row-title">{t.title}</h2>
+          <p className="row-meta tnum">
+            <span>{nameFor(t.owner_email)}</span>
+            {t.due_date && (
+              <span className={!t.completed_at && !t.archived_at && t.due_date < today() ? "overdue" : undefined}>{formatDue(t.due_date)}</span>
+            )}
+            {t.priority === "high" && !t.completed_at && <span>High</span>}
+          </p>
+        </a>
+      ))}
+    </>
+  );
+}
+
+function Activity({ nameFor, onBack }: { nameFor: (email: string) => string; onBack: () => void }) {
+  const [events, setEvents] = useState<ActivityEvent[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    getActivity().then((r) => setEvents(r.events), (e: Error) => setError(e.message));
+  }, []);
+  return (
+    <div className="shell">
+      <header className="masthead">
+        <button className="back" onClick={onBack}>
+          ← Back
+        </button>
+        <h1 className="wordmark">Activity</h1>
+      </header>
+      {error && <p className="error">{error}</p>}
+      {events && events.length === 0 && <p className="notice">Nothing has happened yet.</p>}
+      {events && <History events={events} nameFor={nameFor} itemText={() => "an item"} taskTitle={(e) => (e as ActivityEvent).task_title} />}
+    </div>
+  );
+}
+
+function Search({ nameFor, onBack }: { nameFor: (email: string) => string; onBack: () => void }) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<TaskRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!q.trim()) return;
+    search(q.trim()).then(setResults, (err: Error) => setError(err.message));
+  }
+
+  return (
+    <div className="shell">
+      <header className="masthead">
+        <button className="back" onClick={onBack}>
+          ← Back
+        </button>
+        <form onSubmit={submit}>
+          <input className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" autoFocus />
+        </form>
+      </header>
+      {error && <p className="error">{error}</p>}
+      {results && (results.length === 0 ? <p className="notice">Nothing matches.</p> : <TaskRows tasks={results} nameFor={nameFor} />)}
+    </div>
+  );
+}
+
+function Menu({ me, onClose, go }: { me: Me; onClose: () => void; go: (hash: string) => void }) {
+  return (
+    <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sheet">
+        <button className="menu-item" onClick={() => go("/activity")}>
+          Activity
+        </button>
+        <button className="menu-item" onClick={() => go("/search")}>
+          Search
+        </button>
+        <a className="menu-item" href="/api/export.json">
+          Export everything as JSON
+        </a>
+        <a className="menu-item" href="/api/export.csv">
+          Export tasks as CSV
+        </a>
+        <p className="menu-foot tnum">
+          {me.email} · {__APP_VERSION__}
+        </p>
+        <div className="sheet-actions">
+          <button className="button button-quiet" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

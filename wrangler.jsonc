@@ -21,6 +21,6 @@
     // Left empty until the Access application exists; empty means every
     // request is refused. ALLOWED_EMAILS is a Worker secret, never in this file.
     "ACCESS_TEAM_DOMAIN": "https://noisy-poetry-5afe.cloudflareaccess.com",
-    "ACCESS_AUD": "4e1d62aa62a2930f0d720a6049ecc2020660ded0d03eccaa8f0983efed322954"
+    "ACCESS_AUD": "a5f254817aa4cf2238e3a86f1f2ed66fa743a901e5604d5f62c96f2717daeb9f"
   }
 }

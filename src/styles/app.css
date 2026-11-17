@@ -184,3 +184,266 @@
   font-size: var(--text-meta);
   padding: var(--space-3) 0;
 }
+
+/* Rows are links so the phone's back gesture works. */
+.row {
+  color: inherit;
+  text-decoration: none;
+}
+
+.masthead-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.quiet {
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  background: none;
+  border: 0;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--text-meta);
+  cursor: pointer;
+}
+.quiet[disabled] {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.back {
+  min-height: var(--touch);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--text-meta);
+  cursor: pointer;
+}
+
+/* Detail */
+.editable {
+  width: 100%;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  resize: none;
+}
+.editable::placeholder {
+  color: var(--ink-faint);
+}
+
+.detail-title {
+  overflow: hidden;
+  font-size: var(--text-title);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  margin-top: var(--space-4);
+}
+
+.detail-description {
+  overflow: hidden;
+  min-height: var(--touch);
+  margin-top: var(--space-4);
+  color: var(--ink-muted);
+  line-height: var(--leading-body);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.fact {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: var(--touch);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-meta);
+  text-align: left;
+  cursor: pointer;
+}
+.fact-label {
+  color: var(--ink-faint);
+  font-size: var(--text-ledger);
+}
+/* The native date picker, laid over the fact so the whole thing is the target. */
+.fact-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+.section {
+  margin-top: var(--space-7);
+}
+.section-title {
+  font-size: var(--text-meta);
+  font-weight: 500;
+  color: var(--ink-muted);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--rule);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--rule);
+}
+/* A 44px target with a small drawn box inside it, rather than a 44px box. */
+.tick {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch);
+  height: var(--touch);
+  margin-left: calc(var(--space-2) * -1);
+  background: none;
+  border: 0;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.tick::before {
+  content: "";
+  position: absolute;
+  inset: calc((var(--touch) - 1.15rem) / 2);
+  border: 1px solid var(--rule);
+}
+.tick[aria-pressed="true"]::before {
+  border-color: var(--ink);
+}
+.item-text {
+  flex: 1;
+  min-height: var(--touch);
+}
+.item-done {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+.item-actions {
+  display: flex;
+  flex: none;
+}
+
+.add-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.add-line .editable {
+  flex: 1;
+  min-height: var(--touch);
+}
+
+.note {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--rule);
+}
+.note-meta {
+  color: var(--ink-faint);
+  font-size: var(--text-ledger);
+}
+.note-body {
+  white-space: pre-wrap;
+  margin-top: var(--space-1);
+}
+
+/* The ledger. Quiet, dense, aligned. */
+.ledger {
+  font-size: var(--text-ledger);
+}
+.ledger-day {
+  margin-top: var(--space-5);
+  padding-bottom: var(--space-1);
+  color: var(--ink-faint);
+  font-size: var(--text-ledger);
+  font-weight: 400;
+  border-bottom: 1px solid var(--rule);
+}
+.ledger-line {
+  display: grid;
+  grid-template-columns: 3.25rem 4.5rem 1fr;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  line-height: var(--leading-snug);
+}
+.ledger-time {
+  color: var(--ink-faint);
+}
+.ledger-who {
+  color: var(--ink-muted);
+}
+.ledger-task {
+  color: var(--ink-muted);
+}
+.ledger-was {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+
+.detail-actions {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-7);
+}
+
+.undo {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-3) 0 var(--space-5);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--text-meta);
+  animation: rise 160ms ease-out;
+}
+.undo .quiet {
+  color: var(--paper);
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  min-height: var(--touch);
+  padding: var(--space-3) 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  color: inherit;
+  text-decoration: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-foot {
+  padding-top: var(--space-4);
+  color: var(--ink-faint);
+  font-size: var(--text-ledger);
+}
