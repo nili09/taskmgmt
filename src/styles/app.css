@@ -1,0 +1,186 @@
+/* The shell: masthead, views, the list, the new-task sheet. */
+
+.shell {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0 var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom));
+}
+
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--paper);
+  padding-top: calc(var(--space-5) + env(safe-area-inset-top));
+}
+
+.wordmark {
+  font-size: var(--text-lead);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: 0.01em;
+}
+
+.views {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  border-bottom: 1px solid var(--rule);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.views::-webkit-scrollbar {
+  display: none;
+}
+
+.view {
+  flex: none;
+  min-height: var(--touch);
+  padding: 0 0 var(--space-2);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--text-meta);
+  cursor: pointer;
+}
+.view[aria-current="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 0.75rem 1fr;
+  column-gap: var(--space-2);
+  border-bottom: 1px solid var(--rule);
+  padding: var(--space-4) 0;
+}
+
+.row-title {
+  grid-column: 2;
+  font-size: var(--text-lead);
+  font-weight: 500;
+  line-height: var(--leading-snug);
+}
+.row-done .row-title {
+  color: var(--ink-muted);
+}
+
+/* The accent means one thing: this needs my attention. It sits in its own
+   column so titles stay on the same line whether a task is unread or not. */
+.mark {
+  grid-column: 1;
+  grid-row: 1;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-top: 0.75em;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.row-meta {
+  grid-column: 2;
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+}
+.overdue {
+  color: var(--accent);
+}
+
+.notice {
+  padding: var(--space-5) 0;
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+}
+
+.compose {
+  position: fixed;
+  right: max(var(--space-4), env(safe-area-inset-right));
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  min-height: var(--touch);
+  padding: 0 var(--space-5);
+  background: var(--ink);
+  color: var(--paper);
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: var(--text-meta);
+  cursor: pointer;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--ink) 40%, transparent);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+}
+
+.sheet {
+  width: min(44rem, 100%);
+  background: var(--paper);
+  border-top: 1px solid var(--rule);
+  padding: var(--space-5) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+  animation: rise 160ms ease-out;
+}
+@keyframes rise {
+  from {
+    transform: translateY(1.5rem);
+  }
+}
+
+.field {
+  width: 100%;
+  min-height: var(--touch);
+  margin-top: var(--space-3);
+  padding: var(--space-2) 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-lead);
+}
+
+.sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.button {
+  min-height: var(--touch);
+  padding: 0 var(--space-5);
+  background: var(--ink);
+  color: var(--paper);
+  border: 0;
+  font: inherit;
+  font-size: var(--text-meta);
+  cursor: pointer;
+}
+.button[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+.button-quiet {
+  background: none;
+  color: var(--ink-muted);
+  padding: 0 var(--space-2);
+}
+
+.error {
+  color: var(--accent);
+  font-size: var(--text-meta);
+  padding: var(--space-3) 0;
+}
