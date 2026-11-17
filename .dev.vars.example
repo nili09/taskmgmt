@@ -1,0 +1,6 @@
+# Copy to .dev.vars (git-ignored). Names only; never commit real values.
+# The two people allowed in, comma separated.
+ALLOWED_EMAILS=first.person@example.test,second.person@example.test
+# Local development only: the signed-in user when running on localhost.
+# Honoured only by a dev server on a loopback host; never set this in a deployed Worker.
+DEV_USER_EMAIL=first.person@example.test
