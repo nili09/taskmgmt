@@ -60,6 +60,44 @@ app.post("/api/tasks/:id/read", async (c) => {
 });
 app.get("/api/read-cursors", async (c) => c.json(await cursors(c.env.DB, c.get("user").email)));
 
+// --- Attachment bytes -------------------------------------------------------
+// The metadata, the event and the history all live in D1. This is only the file.
+
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const ATTACHMENT_ID = /^[A-Za-z0-9_-]{8,64}$/;
+
+/**
+ * The bytes are sent before the mutation that records them, so this does not look for a row:
+ * an upload whose mutation never arrives is simply an unreferenced key.
+ */
+app.put("/api/attachments/:id", async (c) => {
+  const id = c.req.param("id");
+  if (!ATTACHMENT_ID.test(id)) throw new HttpError(400, "Invalid id");
+  const declared = Number(c.req.header("content-length") ?? NaN);
+  if (Number.isFinite(declared) && declared > MAX_ATTACHMENT_BYTES) throw new HttpError(400, "That file is over 10 MB");
+  const bytes = await c.req.raw.arrayBuffer();
+  if (bytes.byteLength > MAX_ATTACHMENT_BYTES) throw new HttpError(400, "That file is over 10 MB");
+  await c.env.ATTACHMENTS.put(id, bytes, {
+    metadata: { mime: c.req.header("content-type") ?? "application/octet-stream" },
+  });
+  return c.json({ ok: true });
+});
+
+/** Served only from here, never from a public URL, and never once it has been removed. */
+app.get("/api/attachments/:id", async (c) => {
+  const id = c.req.param("id");
+  const row = await c.env.DB.prepare("SELECT name, mime, removed_at FROM attachments WHERE id = ?")
+    .bind(id)
+    .first<{ name: string; mime: string; removed_at: string | null }>();
+  if (!row || row.removed_at) throw new HttpError(404, "Not found");
+  const bytes = await c.env.ATTACHMENTS.get(id, "arrayBuffer");
+  if (!bytes) throw new HttpError(404, "Not found");
+  return c.body(bytes, 200, {
+    "Content-Type": row.mime,
+    "Content-Disposition": `inline; filename="${row.name.replace(/[\r\n"]/g, "")}"`,
+  });
+});
+
 function stamp() {
   return new Date().toISOString().slice(0, 10);
 }

@@ -50,12 +50,14 @@ let db: IDBDatabase | null = null;
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
+    const req = indexedDB.open(DB, 2);
     req.onupgradeneeded = () => {
       const d = req.result;
-      d.createObjectStore("events", { keyPath: "seq" });
-      d.createObjectStore("outbox", { keyPath: "id" });
-      d.createObjectStore("meta");
+      if (!d.objectStoreNames.contains("events")) d.createObjectStore("events", { keyPath: "seq" });
+      if (!d.objectStoreNames.contains("outbox")) d.createObjectStore("outbox", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("meta")) d.createObjectStore("meta");
+      // Bytes waiting to be sent, keyed by attachment id.
+      if (!d.objectStoreNames.contains("blobs")) d.createObjectStore("blobs");
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -128,11 +130,31 @@ export async function pull(): Promise<void> {
   }
 }
 
+/** An attachment added offline waits here with its bytes. */
+export const getBlob = (id: string) => (db ? tx<Blob | undefined>("blobs", "readonly", (s) => s.get(id)) : Promise.resolve(undefined));
+
+async function putBlob(id: string, blob: Blob) {
+  await new Promise<void>((resolve, reject) => {
+    const t = db!.transaction("blobs", "readwrite");
+    t.objectStore("blobs").put(blob, id);
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
 /** Send what is queued, oldest first. Stops at the first failure and keeps its place. */
 export async function flush(): Promise<void> {
   if (!db || !outbox.length) return;
   for (const m of [...outbox]) {
     try {
+      // Bytes first: the mutation that records them is what makes them visible.
+      if (m.type === "attachment.added") {
+        const id = m.payload.attachment_id as string;
+        const blob = await getBlob(id);
+        if (blob) {
+          await request(`/api/attachments/${id}`, { method: "PUT", body: blob, headers: { "Content-Type": m.payload.mime as string } });
+        }
+      }
       await request("/api/mutations", { method: "POST", body: JSON.stringify(m) });
     } catch {
       publish({ online: false });
@@ -140,6 +162,7 @@ export async function flush(): Promise<void> {
     }
     outbox = outbox.filter((o) => o.id !== m.id);
     await tx("outbox", "readwrite", (s) => s.delete(m.id));
+    if (m.type === "attachment.added") await tx("blobs", "readwrite", (s) => s.delete(m.payload.attachment_id as string));
   }
   rebuild();
   await pull();
@@ -152,6 +175,12 @@ export async function apply(type: EventType, payload: Record<string, unknown>): 
   await putAll("outbox", [m]);
   rebuild();
   await flush();
+}
+
+/** Queue an attachment: its bytes are kept here until they have gone up. */
+export async function attach(taskId: string, attachmentId: string, file: { blob: Blob; name: string; mime: string }): Promise<void> {
+  await putBlob(attachmentId, file.blob);
+  await apply("attachment.added", { task_id: taskId, attachment_id: attachmentId, name: file.name, mime: file.mime, size: file.blob.size });
 }
 
 export async function markTaskRead(taskId: string): Promise<void> {

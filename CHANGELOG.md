@@ -2,6 +2,17 @@
 
 All notable changes to Tandem. Versions follow the phase plan in the brief: one tag per phase.
 
+## 0.4.0 – Attachments
+
+- Photos and documents attach to a task. The bytes go to Workers KV keyed by attachment id;
+  the metadata, the event and the history stay in D1.
+- Photos are resized on the device to a long edge of about 2000px before upload. The limit is
+  10 MB after that, and a file over it is named along with its size rather than silently refused.
+- Files are served only through an authenticated Worker route, never from a public URL, and a
+  removed attachment stops being served while the history still shows that it existed.
+- An attachment added offline waits in the outbox with its bytes, shows from the device in the
+  meantime, and uploads before its own mutation when the line returns.
+
 ## 0.3.0 – Offline and sync
 
 - The device keeps its own copy of the event log in IndexedDB and rebuilds current state with

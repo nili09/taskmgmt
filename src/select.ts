@@ -1,4 +1,4 @@
-import type { EventRecord, Item, Note, Task } from "../shared/model";
+import type { Attachment, EventRecord, Item, Note, Task } from "../shared/model";
 import type { Snapshot } from "./store";
 import type { View } from "./api";
 
@@ -61,6 +61,7 @@ export interface Detail {
   task: TaskRow;
   items: Item[];
   notes: Note[];
+  attachments: Attachment[];
   history: EventRecord[];
 }
 
@@ -74,6 +75,9 @@ export function detailFor(s: Snapshot, id: string): Detail | null {
       .sort((a, b) => (a.position < b.position ? -1 : a.position > b.position ? 1 : a.id < b.id ? -1 : 1)),
     notes: Object.values(s.state.notes)
       .filter((n) => n.task_id === id)
+      .sort((a, b) => (a.created_at < b.created_at ? -1 : 1)),
+    attachments: Object.values(s.state.attachments)
+      .filter((a) => a.task_id === id && !a.removed_at)
       .sort((a, b) => (a.created_at < b.created_at ? -1 : 1)),
     history: s.events.filter((e) => e.task_id === id),
   };

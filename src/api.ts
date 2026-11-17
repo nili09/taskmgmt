@@ -43,7 +43,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     res = await fetch(path, {
       ...init,
       redirect: "manual",
-      headers: init?.body ? { "Content-Type": "application/json" } : undefined,
+      headers: init?.headers ?? (init?.body ? { "Content-Type": "application/json" } : undefined),
     });
   } catch {
     throw new Error("No connection");

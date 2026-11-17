@@ -1,5 +1,7 @@
 export interface Env {
   DB: D1Database;
+  /** Attachment bytes, keyed by attachment id. Metadata lives in D1. */
+  ATTACHMENTS: KVNamespace;
   /** Comma-separated list of the two people allowed in. A Worker secret in production, .dev.vars locally. */
   ALLOWED_EMAILS: string;
   /** https://<team>.cloudflareaccess.com. Empty means every request is refused. */

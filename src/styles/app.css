@@ -455,3 +455,30 @@
   color: var(--ink-muted);
   font-size: var(--text-meta);
 }
+
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-meta);
+}
+.attachment-image {
+  display: block;
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+}
+.attachment-name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.attachment-size {
+  color: var(--ink-faint);
+  font-size: var(--text-ledger);
+}
+.add-line .button {
+  display: inline-flex;
+  align-items: center;
+}

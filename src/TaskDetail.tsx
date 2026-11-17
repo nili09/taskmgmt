@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { EventType, Item } from "../shared/model";
+import type { Attachment, EventType, Item } from "../shared/model";
 import { formatDue } from "./dates";
 import History from "./History";
 import { between } from "./position";
 import { detailFor } from "./select";
-import { apply, getSnapshot, markTaskRead, newTaskId, subscribe } from "./store";
+import { prepare } from "./image";
+import { apply, attach, getBlob, getSnapshot, markTaskRead, newTaskId, subscribe } from "./store";
 
 export default function TaskDetail({ id, nameFor, onBack }: { id: string; nameFor: (email: string) => string; onBack: () => void }) {
   const s = useSyncExternalStore(subscribe, getSnapshot);
@@ -24,7 +25,7 @@ export default function TaskDetail({ id, nameFor, onBack }: { id: string; nameFo
   const run = useCallback((type: EventType, payload: Record<string, unknown>) => void apply(type, payload), []);
 
   if (!detail) return <p className="shell notice">That task is not on this device yet.</p>;
-  const { task, items, notes } = detail;
+  const { task, items, notes, attachments } = detail;
   const live = items.filter((i) => !i.removed_at);
   const itemText = (itemId: string) => items.find((i) => i.id === itemId)?.text ?? "an item";
   const update = (fields: Record<string, unknown>) => run("task.updated", { task_id: id, fields });
@@ -133,6 +134,14 @@ export default function TaskDetail({ id, nameFor, onBack }: { id: string; nameFo
       </section>
 
       <section className="section">
+        <h2 className="section-title">Attachments</h2>
+        {attachments.map((a) => (
+          <Attached key={a.id} attachment={a} onRemove={() => run("attachment.removed", { attachment_id: a.id })} />
+        ))}
+        <AddFile taskId={id} />
+      </section>
+
+      <section className="section">
         <h2 className="section-title">History</h2>
         <History events={detail.history} nameFor={nameFor} itemText={itemText} />
       </section>
@@ -173,6 +182,80 @@ export default function TaskDetail({ id, nameFor, onBack }: { id: string; nameFo
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+const MAX_BYTES = 10 * 1024 * 1024;
+
+const size = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
+
+/** Shown from the device while it is still waiting to go up, and from the Worker once it has. */
+function Attached({ attachment, onRemove }: { attachment: Attachment; onRemove: () => void }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let url: string | null = null;
+    let live = true;
+    void getBlob(attachment.id).then((blob) => {
+      if (!live) return;
+      if (blob) {
+        url = URL.createObjectURL(blob);
+        setSrc(url);
+      } else {
+        setSrc(`/api/attachments/${attachment.id}`);
+      }
+    });
+    return () => {
+      live = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [attachment.id]);
+
+  const isImage = attachment.mime.startsWith("image/");
+  return (
+    <div className="attachment">
+      {isImage && src ? (
+        <a href={src} target="_blank" rel="noreferrer">
+          <img className="attachment-image" src={src} alt={attachment.name} />
+        </a>
+      ) : null}
+      <span className="attachment-name">{attachment.name}</span>
+      <span className="attachment-size tnum">{size(attachment.size)}</span>
+      <button className="quiet" aria-label="Remove" onClick={onRemove}>
+        ×
+      </button>
+    </div>
+  );
+}
+
+function AddFile({ taskId }: { taskId: string }) {
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function choose(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setProblem(null);
+    setBusy(true);
+    const ready = await prepare(file);
+    if (ready.blob.size > MAX_BYTES) {
+      setProblem(`${ready.name} is ${size(ready.blob.size)}. The limit is 10 MB.`);
+      setBusy(false);
+      return;
+    }
+    await attach(taskId, newTaskId(), ready);
+    setBusy(false);
+  }
+
+  return (
+    <div className="add-line">
+      <label className="button button-quiet">
+        {busy ? "Adding…" : "Add a photo or file"}
+        <input type="file" hidden onChange={choose} />
+      </label>
+      {problem && <span className="error">{problem}</span>}
     </div>
   );
 }
