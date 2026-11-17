@@ -447,3 +447,11 @@
   color: var(--ink-faint);
   font-size: var(--text-ledger);
 }
+
+/* Said only when there is something to say: offline, or changes still to send. */
+.status {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+}

@@ -1,6 +1,3 @@
-import type { Attachment, EventRecord, EventType, Item, Note, Task } from "../shared/model";
-
-export type TaskRow = Task & { unread: 0 | 1 };
 export type Me = { email: string; name: string | null; other: { email: string; name: string | null } | null };
 export const VIEWS = ["open", "mine", "theirs", "done", "archived"] as const;
 export type View = (typeof VIEWS)[number];
@@ -40,7 +37,7 @@ function clearReloaded() {
  * surfaces as an opaque response. Reload so the browser follows it — but only once, because a
  * 401 or 403 the Worker itself returns survives a reload and would otherwise loop forever.
  */
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(path, {
@@ -61,25 +58,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export interface Detail {
-  task: TaskRow;
-  items: Item[];
-  notes: Note[];
-  attachments: Attachment[];
-  history: EventRecord[];
-}
-export type ActivityEvent = EventRecord & { task_title: string };
-
 export const getMe = () => request<Me>("/api/me");
-export const getTasks = (view: View) => request<TaskRow[]>(`/api/tasks?view=${view}`);
-export const getTask = (id: string) => request<Detail>(`/api/tasks/${id}`);
-export const search = (q: string) => request<TaskRow[]>(`/api/search?q=${encodeURIComponent(q)}`);
-export const getActivity = () => request<{ events: ActivityEvent[]; more: boolean }>("/api/activity");
 export const markRead = (id: string, seq: number) => request<{ ok: true }>(`/api/tasks/${id}/read`, { method: "POST", body: JSON.stringify({ seq }) });
 
-export function mutate(type: EventType, payload: unknown) {
-  return request<{ event: EventRecord; replayed: boolean }>("/api/mutations", {
-    method: "POST",
-    body: JSON.stringify({ id: newId(), type, client_at: new Date().toISOString(), payload }),
-  });
-}

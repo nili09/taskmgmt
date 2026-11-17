@@ -18,7 +18,7 @@ npm run dev
 | Command | What it does |
 |---|---|
 | `npm run dev` | Vite dev server with the Worker running in the Workers runtime |
-| `npm test` | API tests in the Workers runtime, then a check of the production build |
+| `npm test` | API tests in the Workers runtime, then the offline store and a check of the production build |
 | `npm run typecheck` | Type-checks the app, the Worker and the tests |
 | `npm run build` | Type-checks and builds the Worker and the app |
 

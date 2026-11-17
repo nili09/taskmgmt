@@ -2,6 +2,26 @@
 
 All notable changes to Tandem. Versions follow the phase plan in the brief: one tag per phase.
 
+## 0.3.0 – Offline and sync
+
+- The device keeps its own copy of the event log in IndexedDB and rebuilds current state with
+  `shared/reduce.ts`, the same reducer the server is tested against. Views, sorting, search,
+  unread and history are worked out on the device, so everything already synced can be read
+  with no signal.
+- Writes go to an outbox first and show at once. They are sent in order when there is a line,
+  on reconnect, when the app returns to the foreground, and on a slow poll while visible.
+  Because the mutation id is unique, a change that was already received is not applied twice.
+- Ids are generated on the device, so a task created offline keeps the id it was given.
+- Conflicts resolve per field in server order: both writes stay in history and neither is lost.
+- The app installs to the home screen: a manifest requested with credentials, so Access does
+  not block it, icons set in the app's own typeface, and a service worker that serves the app
+  itself from a stored copy while never caching API answers or a sign-in redirect.
+- A line appears when you are offline or have changes still to send, and the menu says the same.
+- `test-node/offline.test.mjs` runs the store against a stand-in Worker and a fake IndexedDB:
+  a change applies at once, waits its turn, goes up in order, survives the other person editing
+  the same task, and is not applied twice on replay.
+- Not yet built: attachment bytes, push sending.
+
 ## 0.2.0 – The interface
 
 - Self-hosted Newsreader (variable, Latin subset) and a token set for paper, ink and one

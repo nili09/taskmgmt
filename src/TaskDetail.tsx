@@ -1,29 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { EventType, Item } from "../shared/model";
-import { getTask, markRead, mutate, newId, type Detail, type Me } from "./api";
 import { formatDue } from "./dates";
 import History from "./History";
 import { between } from "./position";
+import { detailFor } from "./select";
+import { apply, getSnapshot, markTaskRead, newTaskId, subscribe } from "./store";
 
-export default function TaskDetail({ id, me, onBack, onChanged }: { id: string; me: Me; onBack: () => void; onChanged: () => void }) {
-  const [detail, setDetail] = useState<Detail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export default function TaskDetail({ id, nameFor, onBack }: { id: string; nameFor: (email: string) => string; onBack: () => void }) {
+  const s = useSyncExternalStore(subscribe, getSnapshot);
+  const detail = detailFor(s, id);
   const [undo, setUndo] = useState<{ label: string; type: EventType } | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const d = await getTask(id);
-      setDetail(d);
-      const last = d.history.at(-1);
-      if (last) await markRead(id, last.seq);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, [id]);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    void markTaskRead(id);
+  }, [id, s.cursor]);
 
   useEffect(() => {
     if (!undo) return;
@@ -31,27 +21,16 @@ export default function TaskDetail({ id, me, onBack, onChanged }: { id: string; 
     return () => clearTimeout(t);
   }, [undo]);
 
-  if (error) return <p className="shell error">{error}</p>;
-  if (!detail) return null;
+  const run = useCallback((type: EventType, payload: Record<string, unknown>) => void apply(type, payload), []);
+
+  if (!detail) return <p className="shell notice">That task is not on this device yet.</p>;
   const { task, items, notes } = detail;
   const live = items.filter((i) => !i.removed_at);
-  const nameFor = (email: string) => (email === me.email ? (me.name ?? "Me") : (me.other?.name ?? email));
   const itemText = (itemId: string) => items.find((i) => i.id === itemId)?.text ?? "an item";
-
-  async function run(type: EventType, payload: Record<string, unknown>) {
-    try {
-      await mutate(type, payload);
-      await load();
-      onChanged();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-
   const update = (fields: Record<string, unknown>) => run("task.updated", { task_id: id, fields });
 
-  async function act(type: EventType, label: string, inverse: EventType) {
-    await run(type, { task_id: id });
+  function act(type: EventType, label: string, inverse: EventType) {
+    run(type, { task_id: id });
     setUndo({ label, type: inverse });
   }
 
@@ -62,9 +41,10 @@ export default function TaskDetail({ id, me, onBack, onChanged }: { id: string; 
     const rest = live.filter((i) => i.id !== item.id);
     const before = to > 0 ? (rest[to - 1]?.position ?? null) : null;
     const after = rest[to]?.position ?? null;
-    void run("item.moved", { item_id: item.id, position: between(before, after) });
+    run("item.moved", { item_id: item.id, position: between(before, after) });
   }
 
+  const other = s.me?.other?.email;
   return (
     <div className="shell">
       <header className="masthead">
@@ -73,28 +53,21 @@ export default function TaskDetail({ id, me, onBack, onChanged }: { id: string; 
         </button>
       </header>
 
-      <Editable
-        className="detail-title"
-        value={task.title}
-        placeholder="Title"
-        multiline
-        onSave={(title) => title.trim() && update({ title: title.trim() })}
-      />
+      <Editable className="detail-title" value={task.title} placeholder="Title" multiline onSave={(t) => t.trim() && update({ title: t.trim() })} />
 
       <div className="facts">
-        <button className="fact" onClick={() => run("task.reassigned", { task_id: id, owner_email: task.owner_email === me.email ? me.other?.email : me.email })}>
+        <button
+          className="fact"
+          disabled={!other}
+          onClick={() => run("task.reassigned", { task_id: id, owner_email: task.owner_email === s.me!.email ? other : s.me!.email })}
+        >
           <span className="fact-label">Owner</span>
           <span>{nameFor(task.owner_email)}</span>
         </button>
         <label className="fact">
           <span className="fact-label">Due</span>
           <span className="tnum">{task.due_date ? formatDue(task.due_date) : "Not set"}</span>
-          <input
-            type="date"
-            className="fact-input"
-            value={task.due_date ?? ""}
-            onChange={(e) => update({ due_date: e.target.value || null })}
-          />
+          <input type="date" className="fact-input" value={task.due_date ?? ""} onChange={(e) => update({ due_date: e.target.value || null })} />
         </label>
         <button className="fact" onClick={() => update({ priority: task.priority === "high" ? "normal" : "high" })}>
           <span className="fact-label">Priority</span>
@@ -107,7 +80,7 @@ export default function TaskDetail({ id, me, onBack, onChanged }: { id: string; 
         value={task.description ?? ""}
         placeholder="Add a description"
         multiline
-        onSave={(description) => update({ description: description.trim() })}
+        onSave={(d) => update({ description: d.trim() })}
       />
 
       <section className="section">
@@ -142,14 +115,7 @@ export default function TaskDetail({ id, me, onBack, onChanged }: { id: string; 
         ))}
         <AddLine
           placeholder="Add an item"
-          onAdd={(text) =>
-            run("item.added", {
-              task_id: id,
-              item_id: newId(),
-              text,
-              position: between(live.at(-1)?.position ?? null, null),
-            })
-          }
+          onAdd={(text) => run("item.added", { task_id: id, item_id: newTaskId(), text, position: between(live.at(-1)?.position ?? null, null) })}
         />
       </section>
 
@@ -163,7 +129,7 @@ export default function TaskDetail({ id, me, onBack, onChanged }: { id: string; 
             <p className="note-body">{n.body}</p>
           </div>
         ))}
-        <AddLine placeholder="Add a note" multiline onAdd={(body) => run("note.added", { task_id: id, note_id: newId(), body })} />
+        <AddLine placeholder="Add a note" multiline onAdd={(body) => run("note.added", { task_id: id, note_id: newTaskId(), body })} />
       </section>
 
       <section className="section">
@@ -200,7 +166,7 @@ export default function TaskDetail({ id, me, onBack, onChanged }: { id: string; 
             onClick={() => {
               const type = undo.type;
               setUndo(null);
-              void run(type, { task_id: id });
+              run(type, { task_id: id });
             }}
           >
             Undo
