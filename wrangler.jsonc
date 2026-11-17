@@ -12,9 +12,7 @@
     {
       "binding": "DB",
       "database_name": "tandem",
-      // Placeholder until `wrangler d1 create tandem` is run; the local
-      // database and the test pool do not need a real id.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "5b3a552a-2e3a-44d2-bd5c-948509dad695",
       "migrations_dir": "migrations"
     }
   ],
