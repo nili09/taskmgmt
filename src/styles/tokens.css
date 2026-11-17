@@ -1,0 +1,124 @@
+/* Tandem design foundation: typeface, colour, type scale, spacing. */
+
+@font-face {
+  font-family: "Newsreader";
+  src: url("/fonts/newsreader-latin.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* Paper and ink. Light appearance. */
+  --paper: #fbfaf8;
+  --ink: #141310;
+  --ink-muted: #5e5a52;
+  --ink-faint: #7a756b;
+  --rule: #dfdbd3;
+  /* The one accent. It means: this needs my attention (unread, overdue). */
+  --accent: #a83207;
+
+  /* Type scale. Confident jumps, phone first. */
+  --text-display: 3rem;
+  --text-title: 2rem;
+  --text-lead: 1.5rem;
+  --text-body: 1.125rem;
+  --text-meta: 0.9375rem;
+  --text-ledger: 0.8125rem;
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-body: 1.55;
+
+  /* Spacing, on a 4px base. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Measure for running text, and the minimum touch target. */
+  --measure: 34rem;
+  --touch: 2.75rem;
+}
+
+/* Dark appearance: designed, not inverted. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-appearance="light"]) {
+    --paper: #121110;
+    --ink: #edeae4;
+    --ink-muted: #9a948a;
+    --ink-faint: #827c72;
+    --rule: #2c2a27;
+    --accent: #f2683c;
+  }
+}
+
+/* Only so the foundation specimen can show both appearances side by side.
+   Remove with the specimen in step 2 unless it earns its place. */
+:root[data-appearance="dark"] {
+  --paper: #121110;
+  --ink: #edeae4;
+  --ink-muted: #9a948a;
+  --ink-faint: #827c72;
+  --rule: #2c2a27;
+  --accent: #f2683c;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Newsreader", Georgia, "Times New Roman", serif;
+  font-optical-sizing: auto;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Times, counts and anything that must align in a column. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
