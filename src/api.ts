@@ -16,9 +16,29 @@ export function newId(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/** Remembers that we already reloaded, so a refusal that survives the reload cannot loop. */
+const RELOADED = "tandem.reloaded";
+function reloadedAlready(): boolean {
+  try {
+    if (sessionStorage.getItem(RELOADED)) return true;
+    sessionStorage.setItem(RELOADED, "1");
+  } catch {
+    return false; // private mode and the like: reload once rather than never
+  }
+  return false;
+}
+function clearReloaded() {
+  try {
+    sessionStorage.removeItem(RELOADED);
+  } catch {
+    /* nothing to clear */
+  }
+}
+
 /**
- * An expired Access session answers an API call with a redirect to sign-in. Reload the whole
- * page so the browser follows it; the request never resolves into the app.
+ * An expired Access session answers with a redirect to sign-in, which `redirect: "manual"`
+ * surfaces as an opaque response. Reload so the browser follows it — but only once, because a
+ * 401 or 403 the Worker itself returns survives a reload and would otherwise loop forever.
  */
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
@@ -31,10 +51,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new Error("No connection");
   }
-  if (res.status === 401 || res.status === 403 || res.type === "opaqueredirect") {
-    location.reload();
-    throw new Error("Signed out");
+  if (res.type === "opaqueredirect") {
+    if (!reloadedAlready()) location.reload();
+    throw new Error("Sign-in needed. Reload the page.");
   }
+  if (res.ok) clearReloaded();
   const data = (await res.json().catch(() => null)) as T | { error: string } | null;
   if (!res.ok) throw new Error(data && "error" in (data as object) ? (data as { error: string }).error : "Something went wrong");
   return data as T;
